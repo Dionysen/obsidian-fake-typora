@@ -1,25 +1,52 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, MarkdownPostProcessorContext } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
 	mySetting: string;
+	isOpen: boolean;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+	mySetting: 'default2',
+	isOpen: true
 }
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 
+	processCodeBlocks(el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+		new Notice('processing !!!')
+		el.querySelectorAll('pre > code').forEach((codeEl) => {
+			const preEl = codeEl.parentElement;
+			const language = codeEl.className.replace('language-', '');
+			const editorWrapper = document.createElement('div');
+			editorWrapper.classList.add('code-block-wrapper');
+
+			const languageEditor = document.createElement('input');
+			languageEditor.classList.add('code-language-editor');
+			languageEditor.value = language;
+			languageEditor.placeholder = 'Language';
+			editorWrapper.appendChild(languageEditor);
+
+			// 更新代码块语言
+			languageEditor.addEventListener('input', () => {
+				codeEl.className = `language-${languageEditor.value}`;
+				// 这里可以添加更多逻辑来处理语言变化，例如重新渲染代码块高亮
+			});
+			if (preEl)
+				preEl.appendChild(editorWrapper);
+		});
+	}
+
 	async onload() {
+		this.registerMarkdownPostProcessor(this.processCodeBlocks.bind(this));
 		await this.loadSettings();
 
 		// This creates an icon in the left ribbon.
 		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+			new Notice('This is a notice!!!!');
 		});
 		// Perform additional things with the ribbon
 		ribbonIconEl.addClass('my-plugin-ribbon-class');
@@ -97,12 +124,12 @@ class SampleModal extends Modal {
 	}
 
 	onOpen() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.setText('Woah!');
 	}
 
 	onClose() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.empty();
 	}
 }
@@ -116,7 +143,7 @@ class SampleSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
@@ -130,5 +157,20 @@ class SampleSettingTab extends PluginSettingTab {
 					this.plugin.settings.mySetting = value;
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl)
+			.setName('IsOpen')
+			.setDesc('It\'s a secret also')
+			.addToggle(async (isOpen) => {
+				this.plugin.settings.isOpen = isOpen.getValue();
+				if (this.plugin.settings.isOpen) {
+					new Notice('Open and process')
+					this.plugin.processCodeBlocks;
+				}
+				else {
+					new Notice('Clos and don\'t process')
+				}
+				await this.plugin.saveSettings();
+			})
 	}
 }
